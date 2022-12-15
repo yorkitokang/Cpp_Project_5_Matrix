@@ -1,0 +1,17 @@
+{
+    "files.associations": {
+        "chrono": "cpp",
+        "complex": "cpp",
+        "__locale": "cpp",
+        "bitset": "cpp",
+        "compare": "cpp",
+        "ios": "cpp",
+        "istream": "cpp",
+        "locale": "cpp",
+        "ostream": "cpp",
+        "streambuf": "cpp",
+        "string": "cpp",
+        "type_traits": "cpp",
+        "iostream": "cpp"
+    }
+}

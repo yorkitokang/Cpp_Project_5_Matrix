@@ -11,11 +11,11 @@ iostream
 -
 fstream
 -
+random
+-
+cstring
+-
 omp.h
--
-immintrin.h
--
-arm_neon.h
 -
 
 /home/yorkitokang/Projects/Cpp_Project_5_Matrix/Project5/src/main.cpp

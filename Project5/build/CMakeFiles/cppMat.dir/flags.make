@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/g++
 CXX_FLAGS =  -fopenmp -g   -fopenmp -lgomp -std=gnu++2a
 
-CXX_DEFINES = -DWITH_AVX2
+CXX_DEFINES = -DWITH_AVX2 -D_WITHOMP
 
 CXX_INCLUDES = -I/home/yorkitokang/Projects/Cpp_Project_5_Matrix/Project5/./include 
 

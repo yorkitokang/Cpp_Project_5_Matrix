@@ -1,16 +1,10 @@
 #include <iostream>
 #include <fstream>
+#include <random>
+#include <cstring>
 
 #ifdef _OPENMP
 #include <omp.h>
-#endif
-
-#ifdef WITH_AVX2
-#include <immintrin.h>
-#endif
-
-#ifdef WITH_NEON
-#include <arm_neon.h>
 #endif
 
 #define RESULT(i,j,c) result.data[c*(result.rows)*(result.cols) + i*(result.cols) + j]
@@ -25,22 +19,14 @@ Because of linking advise, Put all the implementations in c.
 template<typename T>
 class Mat
 {
-private:
     size_t rows;
     size_t cols;
     size_t channels;
     T * data; // rows*cols*channels
-    T * parent_ptr;
+    Mat<T> * parent_ptr;
     int *ref_count; //for soft copy
-
 public:
 
-    /*
-        Constructors and Destructors
-    */
-
-    //Default:
-    Mat();
     /*
         Constructor
         @param rows: number of rows
@@ -62,21 +48,28 @@ public:
     //add operator
     Mat<T> operator+(const Mat<T> & other) const;
     Mat<T> operator+(const T arg) const;
-    friend Mat<T> operator+(T const arg, const Mat<T> & other);
+    template<typename U>
+    friend Mat<U> operator+(U const arg, const Mat<U> & other);
+
     //subtract operator
     Mat<T> operator-(const Mat<T>& other) const;
     Mat<T> operator-(const T arg) const;
-    friend Mat<T> operator-(T const arg, const Mat<T> & other);
+    template<typename U>
+    friend Mat<U> operator-(U const arg, const Mat<U> & other);
+
     //multiply operator
     Mat<T> operator*(const Mat<T>& other) const;
     Mat<T> operator*(const T arg) const;
-    friend Mat<T> operator*(T const arg, const Mat<T> & other);
+    template<typename U>
+    friend Mat<U> operator*(U const arg, const Mat<U> & other);
+
     //division operator
     Mat<T> operator/(const Mat<T>& other) const;
     Mat<T> operator/(const T arg) const;
 
     //copy operator
     Mat<T>& operator=(const Mat<T> & other);
+
     //add equal
     Mat<T>& operator+=(const Mat<T> & other);
     //subtract equal
@@ -88,39 +81,48 @@ public:
 
     //hard copy
     Mat<T>& clone(const Mat<T> & other);
-    //print
+    
+    //getter
     void print();
+    void print(const char * filename);
+    void shape();
+    size_t getRows();
+    size_t getCols();
+    size_t getChannels();
+    T * getData();
+    T& operator()(size_t row, size_t col, size_t channel);
 
-    //set value
+    //setter
+    void fill();
+    void fill(T* content);
+    void read(const char * filename);
     void setValue(const size_t row, const size_t col, const size_t channel, T value);
-    // std::ostream operator<<();
+
+    static Mat<T>& hadamard(Mat<T>& lhs, Mat<T>& rhs);
+
 };
 
 /*
 Implementation
 */
-
-template<typename T>
-inline Mat<T>::Mat()
-{
-    rows = 0;
-    cols = 0;
-    channels = 0;
-    ref_count = nullptr;
-    parent_ptr = nullptr;
-    data = nullptr;
-}
-
 template<typename T>
 inline Mat<T>::Mat(size_t rows , size_t cols ,size_t channels , char type ):rows(rows),cols(cols), channels(channels)
 {
     int ref_init = 1;
     parent_ptr = nullptr;
     ref_count = &ref_init;
-    data = new T[rows * cols * channels];
+    if(rows == 0 || cols == 0 || channels  <= 0)
+    {
+        data = nullptr;
+    } else
+    {
+        data = new T[rows * cols * channels];
+    }
+
     if(type == 'b')
     {
         std::cout << "create blank matrix" << std::endl;
+        data = nullptr;
         return;
     }
     if(type == 'z')
@@ -172,9 +174,12 @@ inline Mat<T>::Mat(size_t rows , size_t cols ,size_t channels , char type ):rows
 
     if(type == 'r')
     {
-        fprintf(stderr,"Type Error: creating unsupported random matrix\n  FILE:%s-->LINE:%d-->%s\n",__FILE__,__LINE__,__func__);
-        exit(1);
-    }
+        std::cout << "create rand matrix" << std::endl;
+        srand((unsigned) time(NULL));
+        for(int i = 0 ; i < channels*rows*cols; i++)
+            data[i] = -10+rand()% 20;
+        return;
+	}
 }
 
 template <typename T>
@@ -197,7 +202,13 @@ inline Mat<T>::~Mat()
     (*ref_count) -= 1;
     if((*ref_count) == 0 && data != nullptr)
     {
-        delete[] data;
+        if(parent_ptr == nullptr)
+        {
+            delete[] data;
+        } else{
+            delete[] parent_ptr;
+        }
+
     }
 }
 
@@ -373,10 +384,12 @@ inline Mat<T> Mat<T>::operator*(const Mat<T>& other) const
 #ifdef _OPENMP //OpenMP support
 #pragma omp parallel for
 #endif
-        for (size_t r = 0; r < rows; r++)
-            for (size_t k = 0; k < cols; k++)
-                for (size_t c = 0; c < other.cols; c++)
-                    RESULT(r,c,ch) += THIS(r,k,ch) * OTHER(k,c,ch);
+        for (size_t r0 = 0; r0 < rows; r0 += 16)
+            for (size_t k0 = 0; k0 < cols; k0 += 16)
+                for (size_t r = 0; r < 16; r++)
+                    for (size_t k = 0; k < 16; k++)
+                        for (size_t c = 0; c < other.cols; c++)
+                            RESULT(r,c,ch) += THIS(r,k,ch) * OTHER(k,c,ch);
 
     return result;
 }
@@ -503,7 +516,7 @@ inline void Mat<T>::print()
 {
     if(this->data == nullptr)
     {
-        fprintf(stderr,"Math Error: creating a nonsquare diag matrix\n  FILE:%s-->LINE:%d-->%s\n",__FILE__,__LINE__,__func__);
+        fprintf(stderr,"Null Pointer Error:\n  FILE:%s-->LINE:%d-->%s\n",__FILE__,__LINE__,__func__);
         exit(1);
     }
 // #ifdef _OPENMP //OpenMP support
@@ -521,12 +534,6 @@ inline void Mat<T>::print()
         }
         std::cout << std::endl;
     }
-}
-
-template <typename T>
-inline void Mat<T>::setValue(const size_t row,const size_t col,const size_t channel,const T value)
-{
-    this->data[channel*rows*cols + row*cols + col] = value;
 }
 
 template<typename T>
@@ -553,24 +560,135 @@ inline Mat<T>& Mat<T>::clone(const Mat<T>& other)
     return *this;
 }
 
-/*
-    specialized class: Int
-*/
+template<typename T>
+inline void Mat<T>::print(const char * filename)
+{
+    std::string path("../data");
+    path.append(filename);
+        char *cstr = new char[path.length() + 1];
+    strcpy(cstr, path.c_str());
+    std::ofstream outfile(cstr);
+    for(int i = 0; i < rows*cols*channels; i++)
+        outfile << data[i] << " ";
+    outfile.close();
+    delete [] cstr;
+}
 
-// template<>
-// class Mat<int>
-// {
-// #ifdef WITH_AVX2 //Intel Acceletration
-//     //TODO: Intel Acceletration
-// #elif defined WITH_NEON //AMD Acceletration
-//     //TODO: ARM Acceletration
-// #endif
-// };
+template<typename T>
+inline void Mat<T>::shape()
+{
+    std::cout << "(" << this->rows << "," << this->cols << "," << this->channels << ")" << std::endl;
+}
 
-/*
-    specialized class: float
-*/
+template<typename T>
+T& Mat<T>::operator()(size_t row, size_t col, size_t channel)
+{
+    return data[channel*rows*cols + row * cols + col];
+}
 
-/*
-    specialized class: double
-*/
+template<typename T>
+void Mat<T>::fill()
+{
+    if(this->data == nullptr)
+    {
+        fprintf(stderr,"NUll Pointer Error:\n  FILE:%s-->LINE:%d-->%s\n",__FILE__,__LINE__,__func__);
+        exit(1);
+    }
+    for(int i = 0; i < rows*cols*channels;i++)
+    {
+        std::cin >> data[i];
+    }
+
+        
+}
+
+template<typename T>
+void Mat<T>::fill(T * content)
+{
+    if(this->data == nullptr)
+    {
+        fprintf(stderr,"NUll Pointer Error:\n  FILE:%s-->LINE:%d-->%s\n",__FILE__,__LINE__,__func__);
+        exit(1);
+    }
+    for(int i = 0; i < rows*cols*channels;i++)
+        std::cin >> data[i];
+}
+
+template<typename T>
+void Mat<T>::read(const char * filename)
+{
+    std::ifstream input_file(filename);
+
+    if (!input_file.is_open()) {
+        fprintf(stderr,"Error opening input file: file not exist\n FILE:%s-->LINE:%d-->%s\n",__FILE__,__LINE__,__func__) ;
+        exit(1);
+    }
+    T value;
+    int i = 0;
+    while(input_file >> value)
+    {
+        data[i] = value;
+        i++;
+        if(i = rows*cols*channels)
+        {
+            fprintf(stderr,"Error reading input file: Index out of bond\n FILE:%s-->LINE:%d-->%s\n",__FILE__,__LINE__,__func__) ;
+            exit(1);
+        }
+    }
+    input_file.close();
+}
+
+template<typename T>
+Mat<T>& Mat<T>::hadamard(Mat<T>& lhs, Mat<T>& rhs)
+{
+    if(lhs.getChannels() != rhs.getChannels() || lhs.getRows() != rhs.getRows()|| lhs.getCols() != rhs.getCols())
+    {
+        fprintf(stderr,"Math Error: size not match\n  FILE:%s-->LINE:%d-->%s\n",__FILE__,__LINE__,__func__);
+        exit(1);
+    }
+    if(lhs.getData() == nullptr || rhs.getData() == nullptr)
+    {
+        fprintf(stderr,"NUll Pointer Error:\n  FILE:%s-->LINE:%d-->%s\n",__FILE__,__LINE__,__func__);
+        exit(1);
+    }
+    size_t rows = lhs.getRows();
+    size_t cols = lhs.getCols();
+    size_t channels = lhs.getChannels();
+    Mat<T> temp(rows,cols,channels);
+    T * lhsD;
+    T * rhsD;
+    for(int i = 0; i < rows*cols*channels; i++)
+        temp = lhsD[i] * rhsD[i];
+    
+    return *temp;
+}
+
+template <typename T>
+inline void Mat<T>::setValue(const size_t row,const size_t col,const size_t channel,const T value)
+{
+    this->data[channel*rows*cols + row*cols + col] = value;
+}
+
+template <typename T>
+size_t Mat<T>::getRows()
+{
+    return rows;
+}
+
+template <typename T>
+size_t Mat<T>::getCols()
+{
+    return cols;
+}
+
+template <typename T>
+size_t Mat<T>::getChannels()
+{
+    return channels;
+}
+
+template <typename T>
+T* Mat<T>::getData()
+{
+    return this->data;
+}

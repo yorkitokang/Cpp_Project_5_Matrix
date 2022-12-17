@@ -11,7 +11,7 @@ aux_source_directory(./src DIR_SRCS)
 ADD_EXECUTABLE(cppMat ${DIR_SRCS})
 
 #add_definitions(-DWITH_NEON)
-add_definitions(-DWITH_AVX2 -fopenmp -lgomp)
+add_definitions(-DWITH_AVX2 -fopenmp -lgomp -D_WITHOMP)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 

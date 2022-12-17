@@ -60,6 +60,10 @@
 				{
 					"backtrace" : 2,
 					"define" : "WITH_AVX2"
+				},
+				{
+					"backtrace" : 2,
+					"define" : "_WITHOMP"
 				}
 			],
 			"includes" : 

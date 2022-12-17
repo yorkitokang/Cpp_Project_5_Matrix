@@ -1,1 +1,0 @@
-/usr/bin/g++   -fopenmp -g   CMakeFiles/cppMat.dir/src/main.cpp.o  -o cppMat 

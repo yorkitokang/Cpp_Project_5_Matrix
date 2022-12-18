@@ -18,17 +18,28 @@ int main()
     // matI1.setValue(1,1,1,1);
 
     // TODO:Constructor Test
-    TEST("Constructor","Mat<double>");
-    Mat<double> matD1;//zero constructor
-    Mat<double> matD2(3,4,2);//blank mat
-    Mat<double> matD3(3,5,2,'z');//zero mat
-    Mat<double> matD4(5,4,2,'z');//zero mat
-    Mat<double> matD5(5,5,2,'d');//diag mat
-    Mat<double> matD6(3,3);//zero mat one channel
-    matD4.print();
-    matD5.print();
-    matD5.print("matD552-diag.txt");
+    // TEST("Constructor","Mat<double>");
+    // Mat<double> matD1;//zero constructor
+    // Mat<double> matD2(3,4,2);//blank mat
+    // Mat<double> matD3(3,5,2,'z');//zero mat
+    // Mat<double> matD4(5,4,2,'z');//zero mat
+    // Mat<double> matD5(5,5,2,'d');//diag mat
+    // Mat<double> matD6(3,3);//zero mat one channel
+    // matD4.print();
+    // matD5.print();
+    // matD5.print("matD552-diag.txt");
+    // Mat<double> matD7(5,5,2);
+    // matD7.read("../data/matD552-diag.txt");
+    // matD7.print();
     // TODO: Operator test
+    Mat<double> matD1(3,3,2,'r');
+    Mat<int> matI1(3,3,2,'r');
+    Mat<float> matF1(3,3,2,'r');
+    Mat<char> matC1(3,3,2,'r');
+    matD1.print("matD332-rand");
+    matI1.print();
+    matF1.print();
+    matC1.print();
 
     // TODO: Soft copy test
 

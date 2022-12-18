@@ -23,7 +23,7 @@ class Mat
     size_t cols;
     size_t channels;
     T * data; // rows*cols*channels
-    Mat<T> * parent_ptr;
+    T * parent_ptr;
     int *ref_count; //for soft copy
 public:
 
@@ -81,7 +81,7 @@ public:
 
     //hard copy
     Mat<T>& clone(const Mat<T> & other);
-    
+
     //getter
     void print();
     void print(const char * filename);
@@ -90,6 +90,8 @@ public:
     size_t getCols();
     size_t getChannels();
     T * getData();
+    T * getParent();
+    int * getRef();
     T& operator()(size_t row, size_t col, size_t channel);
 
     //setter
@@ -97,6 +99,8 @@ public:
     void fill(T* content);
     void read(const char * filename);
     void setValue(const size_t row, const size_t col, const size_t channel, T value);
+    //ROI
+    void ROI(Mat<T> & parent,size_t rows, size_t cols, size_t channels, size_t row_offset, size_t col_offset, size_t channel_offset);
 
     static Mat<T>& hadamard(Mat<T>& lhs, Mat<T>& rhs);
 
@@ -122,7 +126,6 @@ inline Mat<T>::Mat(size_t rows , size_t cols ,size_t channels , char type ):rows
     if(type == 'b')
     {
         std::cout << "create blank matrix" << std::endl;
-        data = nullptr;
         return;
     }
     if(type == 'z')
@@ -172,14 +175,8 @@ inline Mat<T>::Mat(size_t rows , size_t cols ,size_t channels , char type ):rows
         return;
     }
 
-    if(type == 'r')
-    {
-        std::cout << "create rand matrix" << std::endl;
-        srand((unsigned) time(NULL));
-        for(int i = 0 ; i < channels*rows*cols; i++)
-            data[i] = -10+rand()% 20;
-        return;
-	}
+    fprintf(stderr,"Parameter: can't recognize the type code of matrix \n  FILE:%s-->LINE:%d-->%s\n",__FILE__,__LINE__,__func__);
+    exit(1);
 }
 
 template <typename T>
@@ -208,7 +205,6 @@ inline Mat<T>::~Mat()
         } else{
             delete[] parent_ptr;
         }
-
     }
 }
 
@@ -227,7 +223,12 @@ inline Mat<T>& Mat<T>::operator=(const Mat<T> & other)
     (*ref_count)--;
     if((*ref_count) == 0 && ref_count != nullptr)
     {
-        delete[] data;
+        if(parent_ptr == nullptr)
+        {
+            delete[] data;
+        } else{
+            delete[] parent_ptr;
+        }
     }
 
     //subsitute current object
@@ -563,9 +564,9 @@ inline Mat<T>& Mat<T>::clone(const Mat<T>& other)
 template<typename T>
 inline void Mat<T>::print(const char * filename)
 {
-    std::string path("../data");
+    std::string path("../data/");
     path.append(filename);
-        char *cstr = new char[path.length() + 1];
+    char *cstr = new char[path.length() + 1];
     strcpy(cstr, path.c_str());
     std::ofstream outfile(cstr);
     for(int i = 0; i < rows*cols*channels; i++)
@@ -595,23 +596,18 @@ void Mat<T>::fill()
         exit(1);
     }
     for(int i = 0; i < rows*cols*channels;i++)
-    {
         std::cin >> data[i];
-    }
-
-        
 }
 
 template<typename T>
 void Mat<T>::fill(T * content)
 {
-    if(this->data == nullptr)
+    if(content == nullptr)
     {
         fprintf(stderr,"NUll Pointer Error:\n  FILE:%s-->LINE:%d-->%s\n",__FILE__,__LINE__,__func__);
         exit(1);
     }
-    for(int i = 0; i < rows*cols*channels;i++)
-        std::cin >> data[i];
+    this->data = content;
 }
 
 template<typename T>
@@ -629,7 +625,7 @@ void Mat<T>::read(const char * filename)
     {
         data[i] = value;
         i++;
-        if(i = rows*cols*channels)
+        if(i > rows*cols*channels)
         {
             fprintf(stderr,"Error reading input file: Index out of bond\n FILE:%s-->LINE:%d-->%s\n",__FILE__,__LINE__,__func__) ;
             exit(1);
@@ -659,7 +655,7 @@ Mat<T>& Mat<T>::hadamard(Mat<T>& lhs, Mat<T>& rhs)
     T * rhsD;
     for(int i = 0; i < rows*cols*channels; i++)
         temp = lhsD[i] * rhsD[i];
-    
+
     return *temp;
 }
 
@@ -667,6 +663,40 @@ template <typename T>
 inline void Mat<T>::setValue(const size_t row,const size_t col,const size_t channel,const T value)
 {
     this->data[channel*rows*cols + row*cols + col] = value;
+}
+
+template <typename T>
+void ROI(Mat<T> & parent,size_t rows, size_t cols, size_t channels, size_t row_offset, size_t col_offset, size_t channel_offset)
+{
+    if(rows+row_offset > parent.getRows() || cols+col_offset > parent.getCols() || channels+channel_offset > parent.getChannels())
+    {
+        fprintf(stderr,"Index Out of Bond: ROI is either too big or not in the parent region\n  FILE:%s-->LINE:%d-->%s\n",__FILE__,__LINE__,__func__);
+        exit(1);
+    }
+    if(parent.getData() == nullptr )
+    {
+        fprintf(stderr,"Null Pointer Error: parent matrix is a null matrix\n  FILE:%s-->LINE:%d-->%s\n",__FILE__,__LINE__,__func__);
+        exit(1);
+    }
+    this->rows = rows;
+    this->cols = cols;
+    this->channels = channels;
+    (*ref_count)--;
+    if((*ref_count) == 0 && data != nullptr)
+    {
+        if(parent_ptr == nullptr)
+        {
+            delete[] data;
+        } else{
+            delete[] parent_ptr;
+        }
+    }
+
+    ref_count = other.getRef();
+    (*ref_count)++;
+    data = other.getData()+ channel_offset*parent.getCols()*parent.getRows() + row_offset * parent.getCols() + col_offset();
+    parent_ptr = other.getParent();
+
 }
 
 template <typename T>
@@ -691,4 +721,16 @@ template <typename T>
 T* Mat<T>::getData()
 {
     return this->data;
+}
+
+template <typename T>
+T* Mat<T>::getParent()
+{
+    return this->parent_ptr;
+}
+
+template <typename T>
+int* Mat<T>::getRef()
+{
+    return this->ref_count;
 }

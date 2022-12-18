@@ -23,27 +23,16 @@ class Mat
     size_t cols;
     size_t channels;
     T * data; // rows*cols*channels
-    T * parent_ptr;
     int *ref_count; //for soft copy
 public:
-
-    /*
-        Constructor
-        @param rows: number of rows
-        @param cols: number of columns
-        @param channels: number of channels
-        @param data: pointer to data
-        @param parent_ptr: pointer to parent
-        @param ref_count: pointer to reference count
-        @paran type: default b = blank matrix
-                    d = diag matrix
-                    r = random matrix
-    */
     Mat(size_t rows = 0, size_t cols = 0, size_t channels = 1,char type = 'b');
     //Copy Constructor
     Mat(const Mat & other);
     //Destructor
     ~Mat();
+    
+    bool operator==(Mat<T>& other);
+    bool operator!=(Mat<T>& other);
 
     //add operator
     Mat<T> operator+(const Mat<T> & other) const;
@@ -103,7 +92,6 @@ public:
     void ROI(Mat<T> & parent,size_t rows, size_t cols, size_t channels, size_t row_offset, size_t col_offset, size_t channel_offset);
 
     static Mat<T>& hadamard(Mat<T>& lhs, Mat<T>& rhs);
-
 };
 
 /*
@@ -112,9 +100,7 @@ Implementation
 template<typename T>
 inline Mat<T>::Mat(size_t rows , size_t cols ,size_t channels , char type ):rows(rows),cols(cols), channels(channels)
 {
-    int ref_init = 1;
-    parent_ptr = nullptr;
-    ref_count = &ref_init;
+    ref_count = new int(1);
     if(rows == 0 || cols == 0 || channels  <= 0)
     {
         data = nullptr;
@@ -125,12 +111,12 @@ inline Mat<T>::Mat(size_t rows , size_t cols ,size_t channels , char type ):rows
 
     if(type == 'b')
     {
-        std::cout << "create blank matrix" << std::endl;
+        // std::cout << "create blank matrix" << std::endl;
         return;
     }
     if(type == 'z')
     {
-        std::cout << "create zero matrix" << std::endl;
+        // std::cout << "create zero matrix" << std::endl;
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
@@ -143,7 +129,7 @@ inline Mat<T>::Mat(size_t rows , size_t cols ,size_t channels , char type ):rows
 
     if(type == 'd')
     {
-        std::cout << "create diag matrix" << std::endl;
+        // std::cout << "create diag matrix" << std::endl;
 
         if(rows != cols)
         {
@@ -182,7 +168,6 @@ inline Mat<T>::Mat(size_t rows , size_t cols ,size_t channels , char type ):rows
 template <typename T>
 inline Mat<T>::Mat(const Mat<T> & Mat)
 {
-    std::cout << "Mat<T>::Mat(const Mat<T> & Mat)" << std::endl;
     cols = Mat.cols;
     rows = Mat.rows;
     channels = Mat.channels;
@@ -194,41 +179,33 @@ inline Mat<T>::Mat(const Mat<T> & Mat)
 template<typename T>
 inline Mat<T>::~Mat()
 {
-    std::cout << "Mat<T>::~Mat()" << std::endl;
+    // std::cout << "Mat<T>::~Mat()" << std::endl;
     //soft copy
     (*ref_count) -= 1;
     if((*ref_count) == 0 && data != nullptr)
     {
-        if(parent_ptr == nullptr)
-        {
-            delete[] data;
-        } else{
-            delete[] parent_ptr;
-        }
+        delete[] data;
+        delete ref_count;
     }
 }
 
 template<typename T>
 inline Mat<T>& Mat<T>::operator=(const Mat<T> & other)
 {
-    std::cout << "Mat<T>::operator=(const Mat<T> & other)" << std::endl;
+    // std::cout << "Mat<T>::operator=(const Mat<T> & other)" << std::endl;
 
     //subsitute current object
     cols = other.cols;
     rows = other.rows;
     channels = other.channels;
-    parent_ptr = other.parent_ptr;
+
 
     //reduce current object ref count
     (*ref_count)--;
     if((*ref_count) == 0 && ref_count != nullptr)
     {
-        if(parent_ptr == nullptr)
-        {
-            delete[] data;
-        } else{
-            delete[] parent_ptr;
-        }
+        delete[] data;
+        delete ref_count;
     }
 
     //subsitute current object
@@ -391,7 +368,6 @@ inline Mat<T> Mat<T>::operator*(const Mat<T>& other) const
                     for (size_t k = 0; k < 16; k++)
                         for (size_t c = 0; c < other.cols; c++)
                             RESULT(r,c,ch) += THIS(r,k,ch) * OTHER(k,c,ch);
-
     return result;
 }
 
@@ -513,7 +489,7 @@ inline Mat<T>& Mat<T>::operator/=(const T arg)
 }
 
 template<typename T>
-inline void Mat<T>::print()
+void Mat<T>::print()
 {
     if(this->data == nullptr)
     {
@@ -543,7 +519,6 @@ inline Mat<T>& Mat<T>::clone(const Mat<T>& other)
     this->channels = other.channels;
     this->rows = other.rows;
     this->cols = other.cols;
-    parent_ptr = other.parent_ptr;
 
     //reduce current object ref count
     *ref_count--;
@@ -607,6 +582,13 @@ void Mat<T>::fill(T * content)
         fprintf(stderr,"NUll Pointer Error:\n  FILE:%s-->LINE:%d-->%s\n",__FILE__,__LINE__,__func__);
         exit(1);
     }
+    (*ref_count)--;
+    if((*ref_count) == 0 && ref_count != nullptr)
+    {
+        delete[] data;
+        delete ref_count;
+    }
+    ref_count = new int(1);
     this->data = content;
 }
 
@@ -666,7 +648,7 @@ inline void Mat<T>::setValue(const size_t row,const size_t col,const size_t chan
 }
 
 template <typename T>
-void ROI(Mat<T> & parent,size_t rows, size_t cols, size_t channels, size_t row_offset, size_t col_offset, size_t channel_offset)
+void Mat<T>::ROI(Mat<T> & parent,size_t rows, size_t cols, size_t channels, size_t row_offset, size_t col_offset, size_t channel_offset)
 {
     if(rows+row_offset > parent.getRows() || cols+col_offset > parent.getCols() || channels+channel_offset > parent.getChannels())
     {
@@ -684,19 +666,16 @@ void ROI(Mat<T> & parent,size_t rows, size_t cols, size_t channels, size_t row_o
     (*ref_count)--;
     if((*ref_count) == 0 && data != nullptr)
     {
-        if(parent_ptr == nullptr)
-        {
-            delete[] data;
-        } else{
-            delete[] parent_ptr;
-        }
+        delete[] data;
+        delete ref_count;
     }
-
-    ref_count = other.getRef();
+    data = new T[rows*cols*channels];
+    ref_count = new int(1);
     (*ref_count)++;
-    data = other.getData()+ channel_offset*parent.getCols()*parent.getRows() + row_offset * parent.getCols() + col_offset();
-    parent_ptr = other.getParent();
-
+    for(int i = 0; i < channels; i += parent.getCols()*parent.getRows())
+        for(int j = 0; j < rows; j+= parent.getCols())
+            for(int k = 0; k < cols; k++)
+                data[i*rows*cols+j*cols+k] = parent.getData()[(channel_offset+i)*parent.getCols()*parent.getRows()+(row_offset+j)*parent.getCols()+(col_offset+k)];
 }
 
 template <typename T>
@@ -733,4 +712,20 @@ template <typename T>
 int* Mat<T>::getRef()
 {
     return this->ref_count;
+}
+
+template <typename T>
+bool Mat<T>::operator==(Mat<T>& other)
+{
+    if(this == &other) return true;
+    if(this->channels != other.channels || this->rows != other.rows || this->cols != other.cols) return false;
+    if(this->data == other.data) return true;
+    for(int i = 0; i < rows*cols*channels;i++)
+        if(data[i] != other.data[i]) return false;
+}
+
+template <typename T>
+bool Mat<T>::operator!=(Mat<T>& other)
+{
+    return !(operator==(other));
 }

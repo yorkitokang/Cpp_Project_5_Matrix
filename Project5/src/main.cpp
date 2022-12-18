@@ -1,7 +1,10 @@
 #include "matrix.hpp"
 #define TEST(a,b) cout << "Test the " << a << " function of " << b << " class" << endl;
+#define SIZE 6400
+#include <chrono>
 //#include "matrixImproved.hpp"
 using namespace std;
+
 int main()
 {
     // Run test
@@ -31,21 +34,89 @@ int main()
     // Mat<double> matD7(5,5,2);
     // matD7.read("../data/matD552-diag.txt");
     // matD7.print();
-    // TODO: Operator test
-    Mat<double> matD1(3,3,2,'r');
-    Mat<int> matI1(3,3,2,'r');
-    Mat<float> matF1(3,3,2,'r');
-    Mat<char> matC1(3,3,2,'r');
-    matD1.print("matD332-rand");
-    matI1.print();
-    matF1.print();
-    matC1.print();
 
-    // TODO: Soft copy test
+    // TODO: Operator test
+    // Mat<double> matD1(3,3,2,'r');
+    // Mat<int> matI1(3,3,2,'r');
+    // Mat<float> matF1(3,3,2,'r');
+    // Mat<char> matC1(3,3,2,'r');
+    // matD1.print("matD332-rand");
+    // matI1.print();
+    // matF1.print();
+    // matC1.print();
+
+    // TODO: ROI test
+    // Mat<double> matD1(3,3,1,'d');
+    // Mat<double> matD2(matD1);
+    // Mat<double> matD3 = matD1;
+    // Mat<double> matD4;
+    // matD4.ROI(matD1,2,2,1,1,1,0);
+    // matD1.print();
+    // matD2.print();
+    // matD3.print();
+    // matD4.print();
+    // matD1.setValue(0,1,0,2);
+    // matD1.print();
+    // matD2.print();
+    // matD3.print();
+    // matD4.print();
+    // {
+    //     Mat<double> matD5;
+    //     matD5.ROI(matD1,2,2,1,1,1,0);
+    // }
+    // Mat<double> matD6;
 
     // TODO: Different type test
 
-    // TODO: Specialize test
+
+    Mat<double> mat1D(SIZE,SIZE,1);
+    Mat<double> mat2D(SIZE,SIZE,1);
+    double* li = new double[SIZE*SIZE];
+    double* li2= new double[SIZE*SIZE];
+    time_t t;
+    srand((unsigned)time(&t));
+    for (int i = 0; i < SIZE; i++)
+    {
+        for (int j = 0; j < SIZE; j++)
+            {
+                li[i * SIZE + j] = 0 + 2 * 1.0 * rand() / RAND_MAX * (1 - 0);
+            }
+    }
+    for (int i = 0; i < SIZE; i++)
+    {
+        for (int j = 0; j < SIZE; j++)
+            {
+                li2[i * SIZE + j] = 0 + 2 * 1.0 * rand() / RAND_MAX * (1 - 0);
+            }
+    }
+    mat1D.fill(li);
+    // mat1D.print();
+    mat2D.fill(li2);
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    Mat<double> mat3D = mat2D*mat1D;
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    std::cout<< "Time elapsed size " <<SIZE << ": " <<std::chrono::duration_cast<std::chrono::milliseconds>(end-begin).count() << "ms" <<std::endl;
+
+    // Mat<int> mat1D(SIZE,SIZE,1);
+    // Mat<int> mat2D(SIZE,SIZE,1);
+    // int* li = new int[SIZE*SIZE];
+    // int* li2= new int[SIZE*SIZE];
+    // for(int i = 0 ; i < SIZE*SIZE;i++)
+    //     li[i] = iRand(1,10);
+    // for(int i = 0 ; i < SIZE*SIZE;i++)
+    // {
+    //     li2[i] = iRand(1,10);
+    //     cout << li2[i];
+    // }
+    // mat1D.fill(li);
+    // mat2D.fill(li2);
+    // Mat<int> mat3D(SIZE,SIZE,1);
+    // mat1D.print();
+    // mat2D.print();
+    // std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    // mat3D = mat1D*mat2D;
+    // std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    // std::cout<< "Time elapsed: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-begin).count() << "ms" <<std::endl;
 
     // TODO: Speed test
 

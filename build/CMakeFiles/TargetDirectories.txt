@@ -1,3 +1,0 @@
-/home/yorkitokang/Projects/Cpp_Project_5_Matrix/build/CMakeFiles/rebuild_cache.dir
-/home/yorkitokang/Projects/Cpp_Project_5_Matrix/build/CMakeFiles/edit_cache.dir
-/home/yorkitokang/Projects/Cpp_Project_5_Matrix/build/CMakeFiles/cppMat.dir

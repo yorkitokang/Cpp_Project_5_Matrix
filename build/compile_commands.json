@@ -1,7 +1,0 @@
-[
-{
-  "directory": "/home/yorkitokang/Projects/Cpp_Project_5_Matrix/build",
-  "command": "/usr/bin/g++  -DWITH_AVX2 -D_WITHOMP -I/home/yorkitokang/Projects/Cpp_Project_5_Matrix/Project5/./include   -fopenmp -g   -fopenmp -lgomp -std=gnu++2a -o CMakeFiles/cppMat.dir/src/main.cpp.o -c /home/yorkitokang/Projects/Cpp_Project_5_Matrix/Project5/src/main.cpp",
-  "file": "/home/yorkitokang/Projects/Cpp_Project_5_Matrix/Project5/src/main.cpp"
-}
-]
